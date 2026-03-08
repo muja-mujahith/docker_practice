@@ -1,34 +1,26 @@
-# Use official PHP image
-FROM php:8.2-cli
+FROM php:8.2-apache
 
-# Install system dependencies
 RUN apt-get update && apt-get install -y \
-    git \
+    zip \
     unzip \
+    git \
     curl \
-    libzip-dev \
-    zip
+    libzip-dev
 
-# Install PHP extensions
-RUN docker-php-ext-install zip
+RUN docker-php-ext-install pdo pdo_mysql
 
-# Install Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+RUN a2enmod rewrite
 
-# Set working directory
-WORKDIR /var/www
+# Change Apache document root
+ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 
-# Copy project files
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
+RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf
+
+WORKDIR /var/www/html
+
 COPY . .
 
-# Install Laravel dependencies
-RUN composer install
+RUN chown -R www-data:www-data /var/www/html
 
-# Give permission
-RUN chmod -R 775 storage bootstrap/cache
-
-# Expose port
-EXPOSE 8000
-
-# Run Laravel
-CMD php artisan serve --host=0.0.0.0 --port=8000
+EXPOSE 80
